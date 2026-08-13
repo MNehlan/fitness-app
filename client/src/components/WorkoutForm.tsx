@@ -27,7 +27,6 @@ const WorkoutForm = ({ onAddWorkout }: WorkoutFormProps) => {
     };
 
     onAddWorkout(workout);
-    console.log(workout);
     setNewWorkout({
       name: '',
     });

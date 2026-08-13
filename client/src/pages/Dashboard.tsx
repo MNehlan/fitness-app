@@ -20,12 +20,19 @@ const Dashboard = () => {
     setWorkouts((prev) => [...prev, workout]);
   }
 
+  function removeWorkout(id: string): void {
+    setWorkouts((prev) => prev.filter((workout) => workout.id !== id));
+  }
+
   return (
     <div>
       <h1>Welcome Back</h1>
       <p>Today's workout</p>
       <WorkoutSummary workouts={workouts} />
-      <WorkoutList workouts={workouts} />
+      <WorkoutList
+        workouts={workouts}
+        onDelete={removeWorkout}
+      />
       <WorkoutForm onAddWorkout={addWorkout} />
     </div>
   );
