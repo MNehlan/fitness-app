@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import WorkoutSummary from '../components/WorkoutSummary';
 import WorkoutList from '../components/WorkoutList';
-import type { Workout } from '../types/workout';
+import type { Workout, Difficulty } from '../types/workout';
 import WorkoutForm from '../components/WorkoutForm';
 
 const Dashboard = () => {
@@ -9,25 +9,33 @@ const Dashboard = () => {
     {
       id: '1',
       name: 'Push Day',
+      difficulty: 'easy',
     },
     {
       id: '2',
       name: 'Leg Day',
+      difficulty: 'medium',
     },
   ]);
 
-  function addWorkout(workout: Workout): void {
+  function addWorkout(workout: Workout) {
     setWorkouts((prev) => [...prev, workout]);
   }
 
-  function removeWorkout(id: string): void {
+  function removeWorkout(id: string) {
     setWorkouts((prev) => prev.filter((workout) => workout.id !== id));
   }
 
-  function updateWorkout(id: string, newName: string) {
+  function updateWorkout(
+    id: string,
+    newName: string,
+    newDifficulty: Difficulty,
+  ) {
     setWorkouts((prev) =>
       prev.map((workout) =>
-        workout.id === id ? { ...workout, name: newName } : workout,
+        workout.id === id
+          ? { ...workout, name: newName, difficulty: newDifficulty }
+          : workout,
       ),
     );
   }

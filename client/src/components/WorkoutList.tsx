@@ -1,25 +1,28 @@
 import { useState } from 'react';
-import type { Workout } from '../types/workout';
+import type { Workout, Difficulty } from '../types/workout';
 
 type WorkoutListProps = {
   workouts: Workout[];
   onDelete: (id: string) => void;
-  onUpdate: (id: string, newName: string) => void;
+  onUpdate: (id: string, newName: string, newDifficulty: Difficulty) => void;
 };
 
 const WorkoutList = ({ workouts, onDelete, onUpdate }: WorkoutListProps) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [newDifficulty, setNewDifficulty] = useState<Difficulty>('easy');
 
-  function saveWorkout(id: string, newName: string) {
-    onUpdate(id, newName);
+  function saveWorkout(id: string) {
+    onUpdate(id, newName, newDifficulty);
     setEditingId(null);
     setNewName('');
+    setNewDifficulty('easy');
   }
 
-  function handleEdit(id: string, name: string) {
+  function handleEdit(id: string, name: string, difficulty: Difficulty) {
     setEditingId(id);
     setNewName(name);
+    setNewDifficulty(difficulty);
   }
 
   return (
@@ -37,15 +40,27 @@ const WorkoutList = ({ workouts, onDelete, onUpdate }: WorkoutListProps) => {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
               />
-              <button onClick={() => saveWorkout(workout.id, newName)}>
-                Save
-              </button>
+              <select
+                name='difficulty'
+                value={newDifficulty}
+                onChange={(e) => setNewDifficulty(e.target.value as Difficulty)}
+              >
+                <option value='easy'>Easy</option>
+                <option value='medium'>Medium</option>
+                <option value='hard'>Hard</option>
+              </select>
+              <button onClick={() => saveWorkout(workout.id)}>Save</button>
               <button onClick={() => setEditingId(null)}>Cancel</button>
             </div>
           ) : (
             <div>
               <p>{workout.name}</p>
-              <button onClick={() => handleEdit(workout.id, workout.name)}>
+              <p>{workout.difficulty}</p>
+              <button
+                onClick={() =>
+                  handleEdit(workout.id, workout.name, workout.difficulty)
+                }
+              >
                 Edit
               </button>
               <button onClick={() => onDelete(workout.id)}>Delete</button>
