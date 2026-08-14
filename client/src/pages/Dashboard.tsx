@@ -24,6 +24,14 @@ const Dashboard = () => {
     setWorkouts((prev) => prev.filter((workout) => workout.id !== id));
   }
 
+  function updateWorkout(id: string, newName: string) {
+    setWorkouts((prev) =>
+      prev.map((workout) =>
+        workout.id === id ? { ...workout, name: newName } : workout,
+      ),
+    );
+  }
+
   return (
     <div>
       <h1>Welcome Back</h1>
@@ -32,6 +40,7 @@ const Dashboard = () => {
       <WorkoutList
         workouts={workouts}
         onDelete={removeWorkout}
+        onUpdate={updateWorkout}
       />
       <WorkoutForm onAddWorkout={addWorkout} />
     </div>
