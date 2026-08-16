@@ -10,14 +10,28 @@ type WorkoutFormState = {
   difficulty: Difficulty;
 };
 
+function isDifficulty(value: string): value is Difficulty {
+  return value === 'easy' || value === 'medium' || value === 'hard';
+}
+
 const WorkoutForm = ({ onAddWorkout }: WorkoutFormProps) => {
   const [newWorkout, setNewWorkout] = useState<WorkoutFormState>({
     name: '',
     difficulty: 'easy',
   });
 
-  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    setNewWorkout((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  function handleNameChange(e: ChangeEvent<HTMLInputElement>) {
+    setNewWorkout((prev) => ({ ...prev, name: e.target.value }));
+  }
+
+  function handleDifficultyChange(e: ChangeEvent<HTMLSelectElement>) {
+    const value = e.target.value;
+
+    if (!isDifficulty(value)) {
+      return;
+    }
+
+    setNewWorkout((prev) => ({ ...prev, difficulty: value }));
   }
 
   function handleSubmit(e: SubmitEvent<HTMLFormElement>) {
@@ -46,12 +60,12 @@ const WorkoutForm = ({ onAddWorkout }: WorkoutFormProps) => {
         type='text'
         name='name'
         value={newWorkout.name}
-        onChange={handleChange}
+        onChange={handleNameChange}
       />
       <select
         name='difficulty'
         value={newWorkout.difficulty}
-        onChange={handleChange}
+        onChange={handleDifficultyChange}
       >
         <option value='easy'>Easy</option>
         <option value='medium'>Medium</option>
