@@ -8,7 +8,7 @@ import pool from '../db.js';
 //Get all exercises
 const getExercises = async (_req: Request, res: Response) => {
   try {
-    const data = await pool.query('select * from exercises');
+    const data = await pool.query('SELECT * FROM exercises');
     res.json(data.rows);
   } catch (error) {
     console.error(error);
@@ -56,22 +56,18 @@ const updateExercise = async (req: Request, res: Response) => {
       });
     }
 
-    const { name, description } = resultValidation.data;
+    const { data } = resultValidation;
 
     const fields: string[] = [];
-    const values: unknown[] = [];
+    const values: any[] = [];
 
-    if (name) {
+    Object.entries(data).forEach(([key, value]) => {
       const placeholder = values.length + 1;
-      fields.push(`name = $${placeholder}`);
-      values.push(name);
-    }
 
-    if (description) {
-      const placeholder = values.length + 1;
-      fields.push(`description = $${placeholder}`);
-      values.push(description);
-    }
+      fields.push(`${key} = $${placeholder}`);
+
+      values.push(value);
+    })
 
     const idPlaceholder = values.length + 1;
     values.push(id);
