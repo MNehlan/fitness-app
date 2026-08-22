@@ -9,7 +9,7 @@ import pool from '../db.js';
 const getExercises = async (_req: Request, res: Response) => {
   try {
     const data = await pool.query('SELECT * FROM exercises');
-    res.json(data.rows);
+    return res.status(200).json(data.rows);
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Database error' });
@@ -33,7 +33,8 @@ const createExercise = async (req: Request, res: Response) => {
       'INSERT INTO exercises (name, description) VALUES ($1, $2) RETURNING *',
       [name, description],
     );
-    res.status(201).json({
+
+    return res.status(201).json({
       data: result.rows[0],
       message: 'Exercise created successfully',
     });
@@ -59,7 +60,7 @@ const updateExercise = async (req: Request, res: Response) => {
     const { data } = resultValidation;
 
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     Object.entries(data).forEach(([key, value]) => {
       const placeholder = values.length + 1;
@@ -67,7 +68,7 @@ const updateExercise = async (req: Request, res: Response) => {
       fields.push(`${key} = $${placeholder}`);
 
       values.push(value);
-    })
+    });
 
     const idPlaceholder = values.length + 1;
     values.push(id);
@@ -91,4 +92,27 @@ const updateExercise = async (req: Request, res: Response) => {
   }
 };
 
-export { getExercises, createExercise, updateExercise };
+//Delete exercise
+const deleteExercise = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      'DELETE FROM exercises WHERE id = $1 RETURNING *',
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        message: 'Exercise not found',
+      });
+    }
+
+  return res.status(200).json({message : 'Exercise deleted successfully'});    
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Database error' });
+  }
+};
+
+export { getExercises, createExercise, updateExercise, deleteExercise };
