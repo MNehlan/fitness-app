@@ -1,30 +1,25 @@
-import type { Request, Response } from 'express';
-import {
-  exerciseSchema,
-  updateExerciseSchema,
-} from '../schemas/exerciseSchema.js';
+import type { NextFunction, Request, Response } from 'express';
 import pool from '../db.js';
+import { exerciseSchema, updateExerciseSchema } from '../schemas/exerciseSchema.js';
+import AppError from '../utils/AppError.js';
 
 //Get all exercises
-const getExercises = async (_req: Request, res: Response) => {
+const getExercises = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const data = await pool.query('SELECT * FROM exercises');
     return res.status(200).json(data.rows);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Database error' });
+    next(error);
   }
 };
 
 //Create a exercise
-const createExercise = async (req: Request, res: Response) => {
+const createExercise = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const resultValidation = exerciseSchema.safeParse(req.body);
 
     if (!resultValidation.success) {
-      return res.status(400).json({
-        message: 'Invalid exercise data',
-      });
+      return next(new AppError('Invalid exercise data', 400))
     }
 
     const { name, description } = resultValidation.data;
@@ -39,8 +34,7 @@ const createExercise = async (req: Request, res: Response) => {
       message: 'Exercise created successfully',
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Database error' });
+    next(error);
   }
 };
 
@@ -53,7 +47,6 @@ const updateExercise = async (req: Request, res: Response) => {
     if (!resultValidation.success) {
       return res.status(400).json({
         message: 'Invalid exercise data',
-        errors: resultValidation.error.issues,
       });
     }
 
