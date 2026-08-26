@@ -19,7 +19,7 @@ app.use(cors())
 app.use('/api/exercises', exerciseRouters);
 
 //Invalid route handler
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   next(new AppError(`Couldn't find ${req.originalUrl} route`, 404));
 });
 

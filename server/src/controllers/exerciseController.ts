@@ -5,11 +5,12 @@ import {
   updateExerciseSchema,
 } from '../schemas/exerciseSchema.js';
 import AppError from '../utils/AppError.js';
+import sendResponse from '../utils/sendResponse.js';
 
 //Get all exercises
 const getExercises = async (_req: Request, res: Response) => {
-  const data = await pool.query('SELECT * FROM exercises');
-  return res.status(200).json(data.rows);
+  const result = await pool.query('SELECT * FROM exercises');
+  return sendResponse(res, { statusCode: 200, data: result.rows });
 };
 
 //Create a exercise
@@ -27,7 +28,8 @@ const createExercise = async (req: Request, res: Response) => {
     [name, description],
   );
 
-  return res.status(201).json({
+  return sendResponse(res, {
+    statusCode: 201,
     data: result.rows[0],
     message: 'Exercise created successfully',
   });
@@ -65,7 +67,8 @@ const updateExercise = async (req: Request, res: Response) => {
     throw new AppError('Exercise not found', 404);
   }
 
-  return res.status(200).json({
+  return sendResponse(res, {
+    statusCode: 200,
     data: result.rows[0],
     message: 'Exercise updated successfully',
   });
@@ -84,7 +87,10 @@ const deleteExercise = async (req: Request, res: Response) => {
     throw new AppError('Exercise not found', 404);
   }
 
-  return res.status(200).json({ message: 'Exercise deleted successfully' });
+  return sendResponse(res, {
+    statusCode: 200,
+    message: 'Exercise deleted successfully',
+  });
 };
 
 export { getExercises, createExercise, updateExercise, deleteExercise };
