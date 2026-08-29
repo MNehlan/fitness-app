@@ -1,13 +1,18 @@
+import { Link } from 'react-router-dom';
+
 const Navbar = () => {
   return (
-<nav>
-  <a href="#">Fitness</a>
-  <a href="#">Dashboard</a>
-  <a href="#">Workouts</a>
-  <a href="#">Exercises</a>
-  <a href="#">Progress</a>
-</nav>
-  )
-}
+    <nav className='bg-gray-900 text-gray-100 p-4'>
+      <h1 className='text-4xl font-bold mb-2'>Fitness App</h1>
+      <div className='flex gap-6 text-gray-300 justify-between'>
+        <Link to='/'>Fitness</Link>
+        <Link to='/dashboard'>Dashboard</Link>
+        <a href='#'>Workouts</a>
+        <Link to='/exercises'>Exercises</Link>
+        <a href='#'>Progress</a>
+      </div>
+    </nav>
+  );
+};
 
-export default Navbar
+export default Navbar;

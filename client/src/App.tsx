@@ -1,12 +1,16 @@
+import { Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
+import Exercises from './pages/Exercises';
 
 const App = () => {
   return (
-    <div>
-      <h1 className='text-4xl font-bold underline'>Fitness App</h1>
+    <div className='min-h-screen bg-gray-900'>
       <Navbar />
-      <Dashboard />
+      <Routes>
+        <Route path='/dashboard' element={<Dashboard />} />
+        <Route path='/exercises' element={<Exercises />} />
+      </Routes>
     </div>
   );
 };
