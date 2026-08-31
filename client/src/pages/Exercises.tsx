@@ -19,6 +19,12 @@ const Exercises = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
 
+  //Delete state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [ deleteErrorId, setDeleteErrorId ] = useState<string | null>(null);
+
+
   useEffect(() => {
     const fetchExercises = async () => {
       try {
@@ -47,6 +53,7 @@ const Exercises = () => {
     }));
   };
 
+  //Create function
   const createExercise = async () => {
     if (!exerciseForm.name.trim()) {
       return;
@@ -73,6 +80,23 @@ const Exercises = () => {
     }
   };
 
+  //Delete Function
+  const deleteExercise = async (id: string) => {
+    try {
+      setDeleteError(null);
+      setDeletingId(id);
+      setDeleteErrorId(null);
+      await api.delete(`/exercises/${id}`);
+      setExercises((prev) => prev.filter((ex) => ex.id !== id));
+    } catch (error) {
+      console.error('Failed to delete', error);
+      setDeleteErrorId(id);
+      setDeleteError('Failed to delete. Try again.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   if (loading) {
     return <div className='text-gray-400 p-4'>Loading...</div>;
   }
@@ -96,6 +120,10 @@ const Exercises = () => {
           <ExerciseCard
             key={exercise.id}
             exercise={exercise}
+            onDelete={deleteExercise}
+            deleteError={deleteError}
+            deletingId={deletingId}
+            deleteErrorId={deleteErrorId}
           />
         ))}
       </div>

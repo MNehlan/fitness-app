@@ -7,7 +7,7 @@ interface ExerciseFormProps {
   onSubmit: () => void;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   error: string | null;
-  loading: boolean
+  loading: boolean;
 }
 
 const ExerciseForm = ({
