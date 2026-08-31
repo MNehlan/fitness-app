@@ -4,36 +4,25 @@ import type { ExerciseFormState } from '../types/exercise';
 
 interface ExerciseFormProps {
   exerciseForm: ExerciseFormState;
-  setExerciseForm: React.Dispatch<React.SetStateAction<ExerciseFormState>>;
-  addExercise: () => void;
+  onSubmit: () => void;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   error: string | null;
   loading: boolean
 }
 
 const ExerciseForm = ({
   exerciseForm,
-  setExerciseForm,
-  addExercise,
+  onSubmit,
+  onChange,
   error,
   loading
 }: ExerciseFormProps) => {
 
-  //Handle input changes
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
-    const { name, value } = e.target;
-
-    setExerciseForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
 
   //handle form submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    addExercise();
+    onSubmit();
   };
 
   return (
@@ -44,21 +33,21 @@ const ExerciseForm = ({
         className='flex flex-col'
         onSubmit={handleSubmit}
       >
-        <label>Name</label>
+        <label htmlFor='name'>Name</label>
         <input
           type='text'
           className='bg-white text-gray-900'
           name='name'
           value={exerciseForm.name}
-          onChange={handleChange}
+          onChange={onChange}
           required
         />
-        <label>Description</label>
+        <label htmlFor='description'>Description</label>
         <textarea
           className='bg-white text-gray-900'
           name='description'
           value={exerciseForm.description}
-          onChange={handleChange}
+          onChange={onChange}
         />
         <button type='submit' disabled={loading}> {loading ? 'Adding...' : 'Add'}</button>
       </form>

@@ -35,7 +35,19 @@ const Exercises = () => {
     fetchExercises();
   }, []);
 
-  const addExercise = async () => {
+  //Handle input changes
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+
+    setExerciseForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const createExercise = async () => {
     if (!exerciseForm.name.trim()) {
       return;
     }
@@ -72,9 +84,9 @@ const Exercises = () => {
   return (
     <div>
       <ExerciseForm
-        addExercise={addExercise}
+        onSubmit={createExercise}
+        onChange={handleChange}
         exerciseForm={exerciseForm}
-        setExerciseForm={setExerciseForm}
         error={createError}
         loading={adding}
       />
