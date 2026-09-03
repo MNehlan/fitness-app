@@ -9,7 +9,7 @@ import sendResponse from '../utils/sendResponse.js';
 
 //Get all exercises
 const getExercises = async (_req: Request, res: Response) => {
-  const result = await pool.query('SELECT * FROM exercises');
+  const result = await pool.query('SELECT * FROM exercises ORDER BY created_at ASC;');
   return sendResponse(res, { statusCode: 200, data: result.rows });
 };
 

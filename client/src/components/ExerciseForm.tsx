@@ -1,13 +1,16 @@
 import type React from 'react';
 import type { ExerciseFormState } from '../types/exercise';
 
-
 interface ExerciseFormProps {
   exerciseForm: ExerciseFormState;
   onSubmit: () => void;
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => void;
   error: string | null;
   loading: boolean;
+  submitLabel?: string;
+  loadingLabel?: string;
 }
 
 const ExerciseForm = ({
@@ -15,10 +18,10 @@ const ExerciseForm = ({
   onSubmit,
   onChange,
   error,
-  loading
+  loading,
+  submitLabel,
+  loadingLabel,
 }: ExerciseFormProps) => {
-
-
   //handle form submit
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +52,12 @@ const ExerciseForm = ({
           value={exerciseForm.description}
           onChange={onChange}
         />
-        <button type='submit' disabled={loading}> {loading ? 'Adding...' : 'Add'}</button>
+        <button
+          type='submit'
+          disabled={loading}
+        >
+          {loading ? loadingLabel ?? 'Adding...' : submitLabel ?? 'Add'}
+        </button>
       </form>
     </div>
   );

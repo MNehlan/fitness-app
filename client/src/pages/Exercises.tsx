@@ -22,8 +22,17 @@ const Exercises = () => {
   //Delete state
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [ deleteErrorId, setDeleteErrorId ] = useState<string | null>(null);
+  const [deleteErrorId, setDeleteErrorId] = useState<string | null>(null);
 
+  //Update state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<ExerciseFormState>({
+    name: '',
+    description: '',
+  });
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateErrorId, setUpdateErrorId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchExercises = async () => {
@@ -97,6 +106,66 @@ const Exercises = () => {
     }
   };
 
+  //Start editing a given exercise — pre-fills the edit form
+  const startEditing = (exercise: Exercise) => {
+    setEditingId(exercise.id);
+    setEditForm({
+      name: exercise.name,
+      description: exercise.description ?? '',
+    });
+    setUpdateError(null);
+    setUpdateErrorId(null);
+  };
+
+  //Cancel editing without saving
+  const cancelEditing = () => {
+    setEditingId(null);
+    setEditForm({ name: '', description: '' });
+    setUpdateError(null);
+    setUpdateErrorId(null);
+  };
+
+  //Handle input changes for the edit form
+  const handleEditChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
+    const { name, value } = e.target;
+
+    setEditForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  //Update function
+  const updateExercise = async (id: string) => {
+    if (!editForm.name.trim()) {
+      return;
+    }
+
+    try {
+      setUpdateError(null);
+      setUpdateErrorId(null);
+      setUpdatingId(id);
+
+      const { data } = await api.patch(`/exercises/${id}`, editForm);
+      const updatedExercise: Exercise = data.data;
+
+      setExercises((prev) =>
+        prev.map((ex) => (ex.id === id ? updatedExercise : ex)),
+      );
+
+      setEditingId(null);
+      setEditForm({ name: '', description: '' });
+    } catch (error) {
+      console.error('Failed to update', error);
+      setUpdateErrorId(id);
+      setUpdateError('Failed to update. Try again.');
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
   if (loading) {
     return <div className='text-gray-400 p-4'>Loading...</div>;
   }
@@ -124,6 +193,15 @@ const Exercises = () => {
             deleteError={deleteError}
             deletingId={deletingId}
             deleteErrorId={deleteErrorId}
+            isEditing={editingId === exercise.id}
+            editForm={editForm}
+            onStartEdit={startEditing}
+            onCancelEdit={cancelEditing}
+            onEditChange={handleEditChange}
+            onEditSubmit={updateExercise}
+            updating={updatingId === exercise.id}
+            updateError={updateError}
+            updateErrorId={updateErrorId}
           />
         ))}
       </div>
