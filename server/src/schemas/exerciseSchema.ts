@@ -11,4 +11,8 @@ const updateExerciseSchema = exerciseSchema
     message: 'At least one field required',
   });
 
-export { exerciseSchema, updateExerciseSchema };
+const exerciseIdParamSchema = z.object({
+  id: z.uuid(),
+});
+
+export { exerciseSchema, updateExerciseSchema, exerciseIdParamSchema };

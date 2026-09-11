@@ -3,13 +3,16 @@ import pool from '../db.js';
 import {
   exerciseSchema,
   updateExerciseSchema,
+  exerciseIdParamSchema,
 } from '../schemas/exerciseSchema.js';
 import AppError from '../utils/AppError.js';
 import sendResponse from '../utils/sendResponse.js';
 
 //Get all exercises
 const getExercises = async (_req: Request, res: Response) => {
-  const result = await pool.query('SELECT * FROM exercises ORDER BY created_at ASC;');
+  const result = await pool.query(
+    'SELECT * FROM exercises ORDER BY created_at ASC;',
+  );
   return sendResponse(res, { statusCode: 200, data: result.rows });
 };
 
@@ -37,14 +40,21 @@ const createExercise = async (req: Request, res: Response) => {
 
 //Update a exercise
 const updateExercise = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const resultValidation = updateExerciseSchema.safeParse(req.body);
+  const paramResult = exerciseIdParamSchema.safeParse(req.params);
 
-  if (!resultValidation.success) {
+  if (!paramResult.success) {
+    throw new AppError('Invalid exercise id', 400);
+  }
+
+  const { id } = paramResult.data;
+
+  const bodyResult = updateExerciseSchema.safeParse(req.body);
+
+  if (!bodyResult.success) {
     throw new AppError('Invalid exercise data', 400);
   }
 
-  const { data } = resultValidation;
+  const { data } = bodyResult;
 
   const fields: string[] = [];
   const values: unknown[] = [];
@@ -76,7 +86,13 @@ const updateExercise = async (req: Request, res: Response) => {
 
 //Delete exercise
 const deleteExercise = async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const paramResult = exerciseIdParamSchema.safeParse(req.params);
+
+  if (!paramResult.success) {
+    throw new AppError('Invalid exercise id', 400);
+  }
+
+  const { id } = paramResult.data;
 
   const result = await pool.query(
     'DELETE FROM exercises WHERE id = $1 RETURNING *',
