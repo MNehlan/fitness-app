@@ -14,6 +14,11 @@ const errorHandler = (
     });
   }
 
+  if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+    return res.status(409).json({ success: false, message: 'Resource already exists' });
+  }
+
+  console.error('Unexpected error', error)
   return res.status(500).json({
     success: false,
     message: 'Internal server error',
