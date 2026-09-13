@@ -7,7 +7,7 @@ const Navbar = () => {
       <div className='flex gap-6 text-gray-300 justify-between'>
         <Link to='/'>Fitness</Link>
         <Link to='/dashboard'>Dashboard</Link>
-        <a href='#'>Workouts</a>
+        <Link to='/workouts'>Workouts</Link>
         <Link to='/exercises'>Exercises</Link>
         <a href='#'>Progress</a>
       </div>
