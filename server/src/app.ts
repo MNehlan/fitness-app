@@ -12,8 +12,8 @@ import AppError from './utils/AppError.js';
 const app = express();
 
 // Global middleware
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
 // API routes
 app.use('/api/exercises', exerciseRouters);

@@ -1,112 +1,108 @@
-import type { Request, Response } from 'express';
-import pool from '../db.js';
+import type { Request, Response } from "express";
+import pool from "../db.js";
 import {
-  exerciseSchema,
-  updateExerciseSchema,
-  exerciseIdParamSchema,
-} from '../schemas/exerciseSchema.js';
-import AppError from '../utils/AppError.js';
-import sendResponse from '../utils/sendResponse.js';
+    exerciseSchema,
+    updateExerciseSchema,
+    exerciseIdParamSchema,
+} from "../schemas/exerciseSchema.js";
+import AppError from "../utils/AppError.js";
+import sendResponse from "../utils/sendResponse.js";
 
-//Get all exercises
 const getExercises = async (_req: Request, res: Response) => {
-  const result = await pool.query(
-    'SELECT * FROM exercises ORDER BY created_at ASC;',
-  );
-  return sendResponse(res, { statusCode: 200, data: result.rows });
+    const result = await pool.query(
+        "SELECT * FROM exercises ORDER BY created_at ASC;",
+    );
+    return sendResponse(res, { statusCode: 200, data: result.rows });
 };
 
-//Create a exercise
 const createExercise = async (req: Request, res: Response) => {
-  const resultValidation = exerciseSchema.safeParse(req.body);
+    const resultValidation = exerciseSchema.safeParse(req.body);
 
-  if (!resultValidation.success) {
-    throw new AppError('Invalid exercise data', 400);
-  }
+    if (!resultValidation.success) {
+        throw new AppError("Invalid exercise data", 400);
+    }
 
-  const { name, description } = resultValidation.data;
+    const { name, description } = resultValidation.data;
 
-  const result = await pool.query(
-    'INSERT INTO exercises (name, description) VALUES ($1, $2) RETURNING *',
-    [name, description],
-  );
+    const result = await pool.query(
+        "INSERT INTO exercises (name, description) VALUES ($1, $2) RETURNING *",
+        [name, description],
+    );
 
-  return sendResponse(res, {
-    statusCode: 201,
-    data: result.rows[0],
-    message: 'Exercise created successfully',
-  });
+    return sendResponse(res, {
+        statusCode: 201,
+        data: result.rows[0],
+        message: "Exercise created successfully",
+    });
 };
 
-//Update a exercise
 const updateExercise = async (req: Request, res: Response) => {
-  const paramResult = exerciseIdParamSchema.safeParse(req.params);
+    const paramResult = exerciseIdParamSchema.safeParse(req.params);
 
-  if (!paramResult.success) {
-    throw new AppError('Invalid exercise id', 400);
-  }
+    if (!paramResult.success) {
+        throw new AppError("Invalid exercise id", 400);
+    }
 
-  const { id } = paramResult.data;
+    const { id } = paramResult.data;
 
-  const bodyResult = updateExerciseSchema.safeParse(req.body);
+    const bodyResult = updateExerciseSchema.safeParse(req.body);
 
-  if (!bodyResult.success) {
-    throw new AppError('Invalid exercise data', 400);
-  }
+    if (!bodyResult.success) {
+        throw new AppError("Invalid exercise data", 400);
+    }
 
-  const { data } = bodyResult;
+    const { data } = bodyResult;
 
-  const fields: string[] = [];
-  const values: unknown[] = [];
+    const fields: string[] = [];
+    const values: unknown[] = [];
 
-  Object.entries(data).forEach(([key, value]) => {
-    const placeholder = values.length + 1;
+    Object.entries(data).forEach(([key, value]) => {
+        const placeholder = values.length + 1;
 
-    fields.push(`${key} = $${placeholder}`);
+        fields.push(`${key} = $${placeholder}`);
 
-    values.push(value);
-  });
+        values.push(value);
+    });
 
-  const idPlaceholder = values.length + 1;
-  values.push(id);
+    const idPlaceholder = values.length + 1;
+    values.push(id);
 
-  const query = `UPDATE exercises SET ${fields.join(', ')} WHERE id = $${idPlaceholder} RETURNING *`;
-  const result = await pool.query(query, values);
+    const query = `UPDATE exercises SET ${fields.join(", ")}, updated_at = now() WHERE id = $${idPlaceholder} RETURNING *`;
+    const result = await pool.query(query, values);
 
-  if (result.rows.length === 0) {
-    throw new AppError('Exercise not found', 404);
-  }
+    if (result.rows.length === 0) {
+        throw new AppError("Exercise not found", 404);
+    }
 
-  return sendResponse(res, {
-    statusCode: 200,
-    data: result.rows[0],
-    message: 'Exercise updated successfully',
-  });
+    return sendResponse(res, {
+        statusCode: 200,
+        data: result.rows[0],
+        message: "Exercise updated successfully",
+    });
 };
 
-//Delete exercise
 const deleteExercise = async (req: Request, res: Response) => {
-  const paramResult = exerciseIdParamSchema.safeParse(req.params);
+    const paramResult = exerciseIdParamSchema.safeParse(req.params);
 
-  if (!paramResult.success) {
-    throw new AppError('Invalid exercise id', 400);
-  }
+    if (!paramResult.success) {
+        throw new AppError("Invalid exercise id", 400);
+    }
 
-  const { id } = paramResult.data;
+    const { id } = paramResult.data;
 
-  const result = await pool.query(
-    'DELETE FROM exercises WHERE id = $1 RETURNING *',
-    [id],
-  );
+    const result = await pool.query(
+        "DELETE FROM exercises WHERE id = $1 RETURNING *",
+        [id],
+    );
 
-  if (result.rows.length === 0) {
-    throw new AppError('Exercise not found', 404);
-  }
+    if (result.rows.length === 0) {
+        throw new AppError("Exercise not found", 404);
+    }
 
-  return sendResponse(res, {
-    statusCode: 200,
-    message: 'Exercise deleted successfully',
-  });
+    return sendResponse(res, {
+        statusCode: 200,
+        message: "Exercise deleted successfully",
+    });
 };
 
 export { getExercises, createExercise, updateExercise, deleteExercise };
