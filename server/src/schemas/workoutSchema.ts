@@ -1,7 +1,7 @@
 import * as z from 'zod';
 
 const workoutSchema = z.strictObject({
-  name: z.string().trim().min(1),
+  name: z.string().trim().min(1).max(255),
   difficulty: z.enum(['easy', 'medium', 'hard']),
 });
 

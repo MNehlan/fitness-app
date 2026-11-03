@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 const exerciseSchema = z.strictObject({
-    name: z.string().trim().min(3),
+    name: z.string().trim().min(3).max(255),
     description: z.string().trim().optional(),
 });
 

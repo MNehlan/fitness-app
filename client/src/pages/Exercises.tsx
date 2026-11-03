@@ -71,7 +71,7 @@ const Exercises = () => {
     try {
       setCreateError(null);
       setAdding(true);
-      const { data } = await api.post('/exercises/create', exerciseForm);
+      const { data } = await api.post('/exercises/', exerciseForm);
 
       const newExercise: Exercise = data.data;
 

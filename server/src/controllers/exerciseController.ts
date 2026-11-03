@@ -8,10 +8,23 @@ import {
 import AppError from "../utils/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
 
-const getExercises = async (_req: Request, res: Response) => {
-    const result = await pool.query(
-        "SELECT * FROM exercises ORDER BY created_at ASC;",
-    );
+const getExercises = async (req: Request, res: Response) => {
+    const userId = req.user?.id;
+
+    const query = userId
+        ? `SELECT id, name, description, created_at, updated_at
+       FROM exercises
+       WHERE user_id IS NULL OR user_id = $1
+       ORDER BY created_at ASC`
+        : `SELECT id, name, description, created_at, updated_at
+       FROM exercises
+       WHERE user_id IS NULL
+       ORDER BY created_at ASC`;
+
+    const result = userId
+        ? await pool.query(query, [userId])
+        : await pool.query(query);
+
     return sendResponse(res, { statusCode: 200, data: result.rows });
 };
 
@@ -23,11 +36,14 @@ const createExercise = async (req: Request, res: Response) => {
     }
 
     const { name, description } = resultValidation.data;
+    const userId = req.user!.id;
 
-    const result = await pool.query(
-        "INSERT INTO exercises (name, description) VALUES ($1, $2) RETURNING *",
-        [name, description],
-    );
+    const query = `
+        INSERT INTO exercises (name, description, user_id)
+        VALUES ($1, $2, $3)
+        RETURNING id, name, description, created_at, updated_at
+    `;
+    const result = await pool.query(query, [name, description, userId]);
 
     return sendResponse(res, {
         statusCode: 201,
@@ -52,6 +68,7 @@ const updateExercise = async (req: Request, res: Response) => {
     }
 
     const { data } = bodyResult;
+    const userId = req.user!.id;
 
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -67,7 +84,15 @@ const updateExercise = async (req: Request, res: Response) => {
     const idPlaceholder = values.length + 1;
     values.push(id);
 
-    const query = `UPDATE exercises SET ${fields.join(", ")}, updated_at = now() WHERE id = $${idPlaceholder} RETURNING *`;
+    const userIdPlaceholder = values.length + 1;
+    values.push(userId);
+
+    const query = `
+        UPDATE exercises
+        SET ${fields.join(", ")}, updated_at = now()
+        WHERE id = $${idPlaceholder} AND user_id = $${userIdPlaceholder}
+        RETURNING id, name, description, created_at, updated_at
+    `;
     const result = await pool.query(query, values);
 
     if (result.rows.length === 0) {
@@ -89,10 +114,11 @@ const deleteExercise = async (req: Request, res: Response) => {
     }
 
     const { id } = paramResult.data;
+    const userId = req.user!.id;
 
     const result = await pool.query(
-        "DELETE FROM exercises WHERE id = $1 RETURNING *",
-        [id],
+        "DELETE FROM exercises WHERE id = $1 AND user_id = $2 RETURNING id",
+        [id, userId],
     );
 
     if (result.rows.length === 0) {

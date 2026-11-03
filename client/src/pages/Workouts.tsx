@@ -71,7 +71,7 @@ const Workouts = () => {
     try {
       setCreateError(null);
       setAdding(true);
-      const { data } = await api.post('/workouts/create', workoutForm);
+      const { data } = await api.post('/workouts/', workoutForm);
 
       const newWorkout: Workout = data.data;
 

@@ -1,16 +1,23 @@
-import { Router } from 'express';
-import { createWorkout, deleteWorkout, getAllWorkouts, getWorkoutById, updateWorkout } from '../controllers/workoutController.js';
+import { Router } from "express";
+import {
+    createWorkout,
+    deleteWorkout,
+    getAllWorkouts,
+    getWorkoutById,
+    updateWorkout,
+} from "../controllers/workoutController.js";
+import authMiddleware from "../middleware/authMiddleware.js";
+import optionalAuthMiddleware from "../middleware/optionalAuthMiddleware.js";
 
 const router = Router();
 
-router.post('/create', createWorkout);
+router.get("/", optionalAuthMiddleware, getAllWorkouts);
+router.get("/:id", optionalAuthMiddleware, getWorkoutById);
 
-router.get('/', getAllWorkouts);
+router.use(authMiddleware);
 
-router.get('/:id', getWorkoutById);
-
-router.patch('/:id', updateWorkout);
-
-router.delete('/:id', deleteWorkout);
+router.post("/", createWorkout);
+router.patch("/:id", updateWorkout);
+router.delete("/:id", deleteWorkout);
 
 export default router;
