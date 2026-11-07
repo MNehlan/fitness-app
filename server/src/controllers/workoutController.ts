@@ -7,6 +7,7 @@ import {
 } from "../schemas/workoutSchema.js";
 import AppError from "../utils/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
+import type { CreatedWorkout } from "../types/workout.js";
 
 const createWorkout = async (req: Request, res: Response) => {
     const result = createWorkoutSchema.safeParse(req.body);
@@ -15,20 +16,130 @@ const createWorkout = async (req: Request, res: Response) => {
         throw new AppError("Invalid workout data", 400);
     }
 
-    const { name, difficulty } = result.data;
+    const { name, difficulty, exercises } = result.data;
     const userId = req.user!.id;
 
-    const query = `
-    INSERT INTO workouts (name, difficulty, user_id)
-    VALUES ($1, $2, $3)
-    RETURNING id, name, difficulty, created_at, updated_at
-  `;
+    const client = await pool.connect();
 
-    const { rows } = await pool.query(query, [name, difficulty, userId]);
+    let createdWorkout: CreatedWorkout;
+
+    try {
+        await client.query("BEGIN");
+
+        const exerciseIds = exercises.map((exercise) => exercise.exerciseId);
+
+        const exerciseQuery = `
+            SELECT id FROM exercises
+            WHERE id = ANY($1::uuid[])
+            AND (user_id IS NULL OR user_id = $2)
+        `;
+
+        const { rows: exerciseRows } = await client.query(exerciseQuery, [
+            exerciseIds,
+            userId,
+        ]);
+
+        if (exerciseRows.length !== exerciseIds.length) {
+            throw new AppError("One or more exercises not found", 404);
+        }
+
+        const query = `
+            INSERT INTO workouts (name, difficulty, user_id)
+            VALUES ($1, $2, $3)
+            RETURNING id, name, difficulty, created_at, updated_at
+        `;
+        const { rows: workoutRows } = await client.query(query, [
+            name,
+            difficulty,
+            userId,
+        ]);
+
+        const workoutId = workoutRows[0].id;
+
+        const exerciseValues: unknown[] = [];
+
+        const exercisePlaceholders = exercises.map((exercise, index) => {
+            const position = index + 1;
+            const offset = index * 3;
+
+            exerciseValues.push(workoutId, exercise.exerciseId, position);
+
+            return `($${offset + 1}, $${offset + 2}, $${offset + 3})`;
+        });
+
+        const exerciseInsertQuery = `
+            INSERT INTO workout_exercises (workout_id, exercise_id, position)
+            VALUES ${exercisePlaceholders.join(", ")}
+            RETURNING id, exercise_id
+        `;
+
+        const { rows: workoutExerciseRows } = await client.query(
+            exerciseInsertQuery,
+            exerciseValues,
+        );
+
+        const workoutExerciseMap = new Map(
+            workoutExerciseRows.map((row) => [row.exercise_id, row.id]),
+        );
+
+        const setValues: unknown[] = [];
+        const setPlaceholders: string[] = [];
+
+        for (const exercise of exercises) {
+            const workoutExerciseId = workoutExerciseMap.get(
+                exercise.exerciseId,
+            );
+
+            if (!workoutExerciseId) {
+                throw new Error("Workout exercise ID not found");
+            }
+
+            for (const [index, set] of exercise.sets.entries()) {
+                const offset = setValues.length;
+
+                setValues.push(
+                    workoutExerciseId,
+                    index + 1,
+                    set.reps,
+                    set.weight ?? null,
+                );
+
+                setPlaceholders.push(
+                    `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`,
+                );
+            }
+        }
+
+        const setInsertQuery = `
+            INSERT INTO workout_sets (
+            workout_exercise_id,
+            set_number,
+            reps,
+            weight
+            )
+            VALUES ${setPlaceholders.join(", ")}
+        `;
+
+        await client.query(setInsertQuery, setValues);
+
+        createdWorkout = workoutRows[0];
+
+        await client.query("COMMIT");
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Rollback failed", rollbackError);
+        }
+
+        throw error;
+    } finally {
+        client.release();
+    }
 
     return sendResponse(res, {
         statusCode: 201,
-        data: rows[0],
+        data: createdWorkout,
         message: "Workout created successfully",
     });
 };
