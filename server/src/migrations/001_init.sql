@@ -14,7 +14,7 @@ CREATE TABLE
     name VARCHAR(255) NOT NULL,
     description TEXT,
     user_id UUID REFERENCES users (id),
-    source_exercise_id UUID REFERENCES exercises (id),
+    source_exercise_id UUID REFERENCES exercises (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now (),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now ()
   );
@@ -25,7 +25,7 @@ CREATE TABLE
     name VARCHAR(255) NOT NULL,
     difficulty TEXT NOT NULL CHECK (difficulty IN ('easy', 'medium', 'hard')),
     user_id UUID REFERENCES users (id),
-    source_workout_id UUID REFERENCES workouts (id),
+    source_workout_id UUID REFERENCES workouts (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now (),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now ()
   );
@@ -55,7 +55,7 @@ CREATE TABLE
     name VARCHAR(255) NOT NULL,
     description TEXT,
     user_id UUID REFERENCES users (id),
-    source_plan_id UUID REFERENCES plans (id),
+    source_plan_id UUID REFERENCES plans (id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now (),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now ()
   );

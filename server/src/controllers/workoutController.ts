@@ -397,16 +397,77 @@ const deleteWorkout = async (req: Request, res: Response) => {
     const { id } = paramResult.data;
     const userId = req.user!.id;
 
-    const query = `
-    DELETE FROM workouts
-    WHERE id = $1 AND user_id = $2
-    RETURNING id
-  `;
+    const client = await pool.connect();
 
-    const result = await pool.query(query, [id, userId]);
+    try {
+        await client.query("BEGIN");
 
-    if (result.rows.length === 0) {
-        throw new AppError("Workout not found", 404);
+        // 1. Verify ownership and lock the workout.
+        const workoutResult = await client.query(
+            `
+            SELECT id
+            FROM workouts
+            WHERE id = $1 AND user_id = $2
+            FOR UPDATE
+            `,
+            [id, userId],
+        );
+
+        if (workoutResult.rows.length === 0) {
+            throw new AppError("Workout not found", 404);
+        }
+
+        // 2. Delete workout associations from plans.
+        await client.query(
+            `
+            DELETE FROM plan_workouts
+            WHERE workout_id = $1
+            `,
+            [id],
+        );
+
+        // 3. Delete sets belonging to this workout.
+        await client.query(
+            `
+            DELETE FROM workout_sets
+            WHERE workout_exercise_id IN (
+                SELECT id
+                FROM workout_exercises
+                WHERE workout_id = $1
+            )
+            `,
+            [id],
+        );
+
+        // 4. Delete exercise associations.
+        await client.query(
+            `
+            DELETE FROM workout_exercises
+            WHERE workout_id = $1
+            `,
+            [id],
+        );
+
+        // 5. Delete the workout itself.
+        await client.query(
+            `
+            DELETE FROM workouts
+            WHERE id = $1 AND user_id = $2
+            `,
+            [id, userId],
+        );
+
+        await client.query("COMMIT");
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Transaction rollback failed:", rollbackError);
+        }
+
+        throw error;
+    } finally {
+        client.release();
     }
 
     return sendResponse(res, {
