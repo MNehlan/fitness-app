@@ -3,6 +3,7 @@ import pool from "../db.js";
 import {
     createWorkoutSchema,
     updateWorkoutSchema,
+    workoutExerciseSchema,
     workoutIdParamSchema,
 } from "../schemas/workoutSchema.js";
 import AppError from "../utils/AppError.js";
@@ -476,7 +477,177 @@ const deleteWorkout = async (req: Request, res: Response) => {
     });
 };
 
+const addExerciseToWorkout = async (req: Request, res: Response) => {
+    const paramResult = workoutIdParamSchema.safeParse(req.params);
+
+    if (!paramResult.success) {
+        throw new AppError("Invalid workout id", 400);
+    }
+
+    const bodyResult = workoutExerciseSchema.safeParse(req.body);
+
+    if (!bodyResult.success) {
+        throw new AppError("Invalid exercise data", 400);
+    }
+
+    const { id: workoutId } = paramResult.data;
+    const { exerciseId, sets } = bodyResult.data;
+    const userId = req.user!.id;
+
+    const client = await pool.connect();
+
+    let createdExercise: {
+        workoutExerciseId: string;
+        exerciseId: string;
+        position: number;
+        sets: {
+            set_number: number;
+            reps: number;
+            weight: number | null;
+        }[];
+    };
+
+    try {
+        await client.query("BEGIN");
+
+        const workoutQuery = `
+            SELECT id FROM workouts
+            WHERE id = $1 AND user_id = $2
+            FOR UPDATE
+        `;
+
+        const { rows: workoutRows } = await client.query(workoutQuery, [
+            workoutId,
+            userId,
+        ]);
+
+        if (workoutRows.length === 0) {
+            throw new AppError("Workout not found", 404);
+        }
+
+        const exerciseQuery = `
+            SELECT id FROM exercises
+            WHERE id = $1
+            AND (user_id IS NULL OR user_id = $2)
+        `;
+
+        const { rows: exerciseRows } = await client.query(exerciseQuery, [
+            exerciseId,
+            userId,
+        ]);
+
+        if (exerciseRows.length === 0) {
+            throw new AppError("Exercise not found", 404);
+        }
+
+        const duplicateQuery = `
+            SELECT id FROM workout_exercises
+            WHERE workout_id = $1 AND exercise_id = $2
+        `;
+
+        const { rows: duplicateRows } = await client.query(duplicateQuery, [
+            workoutId,
+            exerciseId,
+        ]);
+
+        if (duplicateRows.length > 0) {
+            throw new AppError("Exercise already exists in this workout", 409);
+        }
+
+        const positionQuery = `
+            SELECT COALESCE(MAX(position), 0) + 1 AS next_position
+            FROM workout_exercises
+            WHERE workout_id = $1
+        `;
+
+        const { rows: positionRows } = await client.query(positionQuery, [
+            workoutId,
+        ]);
+
+        const position = positionRows[0].next_position;
+
+        const insertExerciseQuery = `
+            INSERT INTO workout_exercises (
+                workout_id,
+                exercise_id,
+                position
+            )
+            VALUES ($1, $2, $3)
+            RETURNING id
+        `;
+
+        const { rows: insertedExerciseRows } = await client.query(
+            insertExerciseQuery,
+            [workoutId, exerciseId, position],
+        );
+
+        const workoutExerciseId = insertedExerciseRows[0].id;
+
+        throw new Error("Testing transaction rollback");
+
+        const setValues: unknown[] = [];
+        const setPlaceholders: string[] = [];
+
+        for (const [index, set] of sets.entries()) {
+            const offset = setValues.length;
+
+            setValues.push(
+                workoutExerciseId,
+                index + 1,
+                set.reps,
+                set.weight ?? null,
+            );
+
+            setPlaceholders.push(
+                `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`,
+            );
+        }
+
+        const insertSetsQuery = `
+            INSERT INTO workout_sets (
+                workout_exercise_id,
+                set_number,
+                reps,
+                weight
+            )
+            VALUES ${setPlaceholders.join(", ")}
+        `;
+
+        await client.query(insertSetsQuery, setValues);
+
+        createdExercise = {
+            workoutExerciseId,
+            exerciseId,
+            position,
+            sets: sets.map((set, index) => ({
+                set_number: index + 1,
+                reps: set.reps,
+                weight: set.weight ?? null,
+            })),
+        };
+
+        await client.query("COMMIT");
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Rollback failed", rollbackError);
+        }
+
+        throw error;
+    } finally {
+        client.release();
+    }
+
+    return sendResponse(res, {
+        statusCode: 201,
+        data: createdExercise,
+        message: "Exercise added to workout successfully",
+    });
+};
+
 export {
+    addExerciseToWorkout,
     createWorkout,
     getAllWorkouts,
     getWorkoutById,

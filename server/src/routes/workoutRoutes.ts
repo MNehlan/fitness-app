@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+    addExerciseToWorkout,
     createWorkout,
     deleteWorkout,
     getAllWorkouts,
@@ -17,6 +18,7 @@ router.get("/:id", optionalAuthMiddleware, getWorkoutById);
 router.use(authMiddleware);
 
 router.post("/", createWorkout);
+router.post("/:id/exercises", addExerciseToWorkout);
 router.patch("/:id", updateWorkout);
 router.delete("/:id", deleteWorkout);
 
