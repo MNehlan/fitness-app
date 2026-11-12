@@ -38,6 +38,28 @@ const workoutIdParamSchema = z.object({
     id: z.uuid(),
 });
 
+const workoutSetUpdateSchema = workoutSetSchema.extend({
+    id: z.uuid().optional(),
+});
+
+const updateWorkoutExerciseSetsSchema = z.strictObject({
+    sets: z
+        .array(workoutSetUpdateSchema)
+        .min(1)
+        .refine(
+            (sets) => {
+                const ids = sets.flatMap((set) => (set.id ? [set.id] : []));
+                return new Set(ids).size === ids.length;
+            },
+            { message: "Duplicate set IDs are not allowed" },
+        ),
+});
+
+const workoutExerciseSetsParamSchema = z.strictObject({
+    id: z.uuid(),
+    workoutExerciseId: z.uuid(),
+});
+
 export {
     workoutSetSchema,
     workoutExerciseSchema,
@@ -45,4 +67,6 @@ export {
     createWorkoutSchema,
     updateWorkoutSchema,
     workoutIdParamSchema,
+    updateWorkoutExerciseSetsSchema,
+    workoutExerciseSetsParamSchema,
 };

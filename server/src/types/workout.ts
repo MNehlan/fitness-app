@@ -27,6 +27,7 @@ interface WorkoutDetailRow {
 }
 
 interface WorkoutSetResponse {
+    id: string;
     set_number: number;
     reps: number;
     weight: string | null;
@@ -50,10 +51,17 @@ interface WorkoutDetailResponse {
     exercises: WorkoutExerciseResponse[];
 }
 
+interface WorkoutSetInput {
+    id?: string;
+    reps: number;
+    weight?: number | null;
+}
+
 export type {
     CreatedWorkout,
     WorkoutDetailRow,
     WorkoutSetResponse,
     WorkoutExerciseResponse,
     WorkoutDetailResponse,
+    WorkoutSetInput
 };

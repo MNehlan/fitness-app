@@ -6,6 +6,7 @@ import {
     getAllWorkouts,
     getWorkoutById,
     updateWorkout,
+    updateWorkoutExerciseSets,
 } from "../controllers/workoutController.js";
 import authMiddleware from "../middleware/authMiddleware.js";
 import optionalAuthMiddleware from "../middleware/optionalAuthMiddleware.js";
@@ -20,6 +21,7 @@ router.use(authMiddleware);
 router.post("/", createWorkout);
 router.post("/:id/exercises", addExerciseToWorkout);
 router.patch("/:id", updateWorkout);
+router.put("/:id/exercises/:workoutExerciseId/sets", updateWorkoutExerciseSets);
 router.delete("/:id", deleteWorkout);
 
 export default router;
