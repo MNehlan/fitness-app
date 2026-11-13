@@ -5,6 +5,7 @@ import {
     deleteWorkout,
     getAllWorkouts,
     getWorkoutById,
+    removeExercisesFromWorkout,
     updateWorkout,
     updateWorkoutExerciseSets,
 } from "../controllers/workoutController.js";
@@ -23,5 +24,6 @@ router.post("/:id/exercises", addExerciseToWorkout);
 router.patch("/:id", updateWorkout);
 router.put("/:id/exercises/:workoutExerciseId/sets", updateWorkoutExerciseSets);
 router.delete("/:id", deleteWorkout);
+router.delete("/:id/exercises", removeExercisesFromWorkout);
 
 export default router;

@@ -21,6 +21,17 @@ interface UpdatedWorkoutExerciseSets {
     sets: WorkoutSetResponse[];
 }
 
+interface DeleteWorkoutExercisesParams {
+    workoutId: string;
+    userId: string;
+    workoutExerciseIds: string[];
+}
+
+interface WorkoutExerciseStats {
+    total_exercises: number;
+    max_position: number;
+}
+
 const syncWorkoutExerciseSets = async ({
     workoutId,
     workoutExerciseId,
@@ -268,4 +279,136 @@ const syncWorkoutExerciseSets = async ({
     }
 };
 
-export { syncWorkoutExerciseSets };
+const deleteWorkoutExercises = async ({
+    workoutId,
+    userId,
+    workoutExerciseIds,
+}: DeleteWorkoutExercisesParams) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        // 1. Verify ownership and lock the workout.
+        const workoutResult = await client.query(
+            `
+                SELECT id FROM workouts WHERE id = $1 AND user_id = $2 FOR UPDATE
+            `,
+            [workoutId, userId],
+        );
+
+        if (workoutResult.rows.length === 0) {
+            throw new AppError("Workout not found", 404);
+        }
+
+        // 2. Validate that every requested association belongs to this workout.
+        const associationResult = await client.query(
+            `
+                SELECT id
+                FROM workout_exercises
+                WHERE workout_id = $1
+                  AND id = ANY($2::uuid[])
+                FOR UPDATE
+            `,
+            [workoutId, workoutExerciseIds],
+        );
+
+        if (associationResult.rows.length !== workoutExerciseIds.length) {
+            throw new AppError(
+                "One or more exercises were not found in this workout",
+                404,
+            );
+        }
+
+        // 3. Get the current exercise count and highest position.
+        const statsResult = await client.query<WorkoutExerciseStats>(
+            `
+                SELECT
+                    COUNT(*)::int AS total_exercises,
+                    COALESCE(MAX(position), 0)::int AS max_position
+                FROM workout_exercises
+                WHERE workout_id = $1
+            `,
+            [workoutId],
+        );
+
+        const { total_exercises, max_position } = statsResult.rows[0];
+
+        // 4. Never allow the workout to become empty.
+        if (total_exercises - workoutExerciseIds.length < 1) {
+            throw new AppError(
+                "A workout must contain at least one exercise",
+                400,
+            );
+        }
+
+        // 5. Delete the requested associations.
+        // Their workout_sets are deleted through ON DELETE CASCADE.
+        await client.query(
+            `
+                DELETE FROM workout_exercises
+                WHERE workout_id = $1
+                  AND id = ANY($2::uuid[])
+            `,
+            [workoutId, workoutExerciseIds],
+        );
+
+        // 6. Move remaining positions to a temporary range.
+        // This avoids conflicts with UNIQUE(workout_id, position).
+        const offset = max_position + 1;
+        const maxInteger = 2147483647;
+
+        if (max_position + offset > maxInteger) {
+            throw new AppError(
+                "Workout exercise positions exceed the supported range",
+                409,
+            );
+        }
+
+        await client.query(
+            `
+                UPDATE workout_exercises
+                SET position = position + $2
+                WHERE workout_id = $1
+            `,
+            [workoutId, offset],
+        );
+
+        // 7. Reassign sequential positions while preserving relative order.
+        await client.query(
+            `
+                WITH ordered_exercises AS (
+                    SELECT
+                        id,
+                        ROW_NUMBER() OVER (ORDER BY position)::int AS new_position
+                    FROM workout_exercises
+                    WHERE workout_id = $1
+                )
+                UPDATE workout_exercises AS we
+                SET position = ordered_exercises.new_position
+                FROM ordered_exercises
+                WHERE we.id = ordered_exercises.id
+            `,
+            [workoutId],
+        );
+
+        await client.query("COMMIT");
+
+        return {
+            deletedWorkoutExerciseIds: workoutExerciseIds,
+            remainingExerciseCount: total_exercises - workoutExerciseIds.length,
+        };
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Transaction rollback failed:", rollbackError);
+        }
+
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+export { syncWorkoutExerciseSets, deleteWorkoutExercises };
