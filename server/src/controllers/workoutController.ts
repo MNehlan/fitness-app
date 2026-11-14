@@ -8,6 +8,7 @@ import {
     workoutExerciseSchema,
     workoutExerciseSetsParamSchema,
     workoutIdParamSchema,
+    reorderWorkoutExercisesSchema,
 } from "../schemas/workoutSchema.js";
 import AppError from "../utils/AppError.js";
 import sendResponse from "../utils/sendResponse.js";
@@ -19,6 +20,7 @@ import type {
 import {
     syncWorkoutExerciseSets,
     deleteWorkoutExercises,
+    reorderWorkoutExercises,
 } from "../services/workoutService.js";
 
 const createWorkout = async (req: Request, res: Response) => {
@@ -713,6 +715,36 @@ const removeExercisesFromWorkout = async (req: Request, res: Response) => {
     });
 };
 
+const reorderExercisesInWorkout = async (req: Request, res: Response) => {
+    const paramResult = workoutIdParamSchema.safeParse(req.params);
+
+    if (!paramResult.success) {
+        throw new AppError("Invalid workout", 400);
+    }
+
+    const bodyResult = reorderWorkoutExercisesSchema.safeParse(req.body);
+
+    if (!bodyResult.success) {
+        throw new AppError("Invalid workout exercise data", 400);
+    }
+
+    const { id: workoutId } = paramResult.data;
+    const { workoutExerciseIds } = bodyResult.data;
+    const userId = req.user!.id;
+
+    const result = await reorderWorkoutExercises({
+        workoutId,
+        userId,
+        workoutExerciseIds,
+    });
+
+    return sendResponse(res, {
+        statusCode: 200,
+        data: result,
+        message: "Workout exercises reordered successfully",
+    });
+};
+
 export {
     addExerciseToWorkout,
     createWorkout,
@@ -722,4 +754,5 @@ export {
     deleteWorkout,
     updateWorkoutExerciseSets,
     removeExercisesFromWorkout,
+    reorderExercisesInWorkout
 };

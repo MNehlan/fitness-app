@@ -69,6 +69,16 @@ const deleteWorkoutExercisesSchema = z.strictObject({
         }),
 });
 
+const reorderWorkoutExercisesSchema = z.strictObject({
+    workoutExerciseIds: z
+        .array(z.uuid())
+        .min(1)
+        .refine(
+            (ids) => new Set(ids).size === ids.length,
+            { message: "Duplicate workout exercise IDs are not allowed" },
+        ),
+});
+
 export {
     workoutSetSchema,
     workoutExerciseSchema,
@@ -79,4 +89,5 @@ export {
     updateWorkoutExerciseSetsSchema,
     workoutExerciseSetsParamSchema,
     deleteWorkoutExercisesSchema,
+    reorderWorkoutExercisesSchema
 };

@@ -32,6 +32,12 @@ interface WorkoutExerciseStats {
     max_position: number;
 }
 
+interface ReorderWorkoutExercisesParams {
+    workoutId: string;
+    userId: string;
+    workoutExerciseIds: string[];
+}
+
 const syncWorkoutExerciseSets = async ({
     workoutId,
     workoutExerciseId,
@@ -411,4 +417,149 @@ const deleteWorkoutExercises = async ({
     }
 };
 
-export { syncWorkoutExerciseSets, deleteWorkoutExercises };
+const reorderWorkoutExercises = async ({
+    workoutId,
+    userId,
+    workoutExerciseIds,
+}: ReorderWorkoutExercisesParams) => {
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+
+        // 1. Verify workout ownership and lock the workout.
+        const workoutResult = await client.query(
+            `
+                SELECT id
+                FROM workouts
+                WHERE id = $1 AND user_id = $2
+                FOR UPDATE
+            `,
+            [workoutId, userId],
+        );
+
+        if (workoutResult.rows.length === 0) {
+            throw new AppError("Workout not found", 404);
+        }
+
+        // 2. Retrieve all existing associations.
+        const associationResult = await client.query(
+            `
+                SELECT id, position
+                FROM workout_exercises
+                WHERE workout_id = $1
+                ORDER BY position
+                FOR UPDATE
+            `,
+            [workoutId],
+        );
+
+        const existingAssociations = associationResult.rows;
+
+        // 3. Validate that the submitted list contains every
+        // existing association exactly once.
+        if (existingAssociations.length !== workoutExerciseIds.length) {
+            throw new AppError("All workout exercises must be included", 400);
+        }
+
+        const existingIds = new Set(
+            existingAssociations.map((association) => association.id),
+        );
+
+        const allAssociationsBelongToWorkout = workoutExerciseIds.every((id) =>
+            existingIds.has(id),
+        );
+
+        if (!allAssociationsBelongToWorkout) {
+            throw new AppError(
+                "One or more exercises were not found in this workout",
+                404,
+            );
+        }
+
+        // 4. Check whether the order actually changed.
+        const orderChanged = workoutExerciseIds.some(
+            (id, index) => existingAssociations[index]?.id !== id,
+        );
+
+        if (!orderChanged) {
+            await client.query("COMMIT");
+
+            return {
+                workoutExerciseIds,
+                message: "Exercise order is already up to date",
+            };
+        }
+
+        const maxPosition = Math.max(
+            ...existingAssociations.map((association) => association.position),
+        );
+
+        const offset = maxPosition + 1;
+        const maxInteger = 2147483647;
+
+        if (maxPosition + offset > maxInteger) {
+            throw new AppError(
+                "Workout exercise positions exceed the supported range",
+                409,
+            );
+        }
+
+        await client.query(
+            `
+                UPDATE workout_exercises
+                SET position = position + $2
+                WHERE workout_id = $1
+            `,
+            [workoutId, offset],
+        );
+
+        // 6. Assign positions according to the submitted array order.
+        const values: (string | number)[] = [workoutId];
+
+        const placeholders = workoutExerciseIds.map((id, index) => {
+            values.push(id, index + 1);
+
+            const idPlaceholder = index * 2 + 2;
+            const positionPlaceholder = index * 2 + 3;
+
+            return `($${idPlaceholder}::uuid, $${positionPlaceholder}::integer)`;
+        });
+
+        await client.query(
+            `
+                UPDATE workout_exercises AS we
+                SET position = ordered.position
+                FROM (
+                    VALUES ${placeholders.join(", ")}
+                ) AS ordered(id, position)
+                WHERE we.id = ordered.id
+                  AND we.workout_id = $1
+            `,
+            values,
+        );
+
+        await client.query("COMMIT");
+
+        return {
+            workoutExerciseIds,
+            message: "Exercise order updated successfully",
+        };
+    } catch (error) {
+        try {
+            await client.query("ROLLBACK");
+        } catch (rollbackError) {
+            console.error("Transaction rollback failed:", rollbackError);
+        }
+
+        throw error;
+    } finally {
+        client.release();
+    }
+};
+
+export {
+    syncWorkoutExerciseSets,
+    deleteWorkoutExercises,
+    reorderWorkoutExercises,
+};
